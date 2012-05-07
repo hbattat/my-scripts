@@ -1,0 +1,433 @@
+<!doctype html>
+<!-- paulirish.com/2008/conditional-stylesheets-vs-css-hacks-answer-neither/ -->
+<!--[if lt IE 7]> <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="en"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js lt-ie9 lt-ie8" lang="en"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js lt-ie9" lang="en"> <![endif]-->
+<!-- Consider adding a manifest.appcache: h5bp.com/d/Offline -->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+  <title>Blockers</title>
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<link rel="stylesheet" href="css/style.css">
+
+  <script src="js/modernizr-2.0.6.min.js"></script>
+  
+</head>
+
+<body>
+	<canvas id="canvas" height="600" width="600"></canvas>
+   	<a id="reset">reset</a>
+    <script>
+	/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Core Function
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */   
+  
+  	//http://jasonrowe.com/2009/03/14/determine-if-two-rectangles-overlap-each-other-in-javascript/
+	// Check if position is in range
+	function valueInRange(value, min, max){
+		return (value <= max) && (value >= min);
+	}
+	
+	
+	// Calculate slope
+	function slope(x,x2,y,y2){
+		x = parseFloat(x);
+		x2 = parseFloat(x2);
+		
+		y = parseFloat(y);
+		y2 = parseFloat(y2);
+		
+		return (y - y2) / ( x - x2);
+		
+	}
+	
+	// Get hypotenuse
+	function get_hyp(x,x2,y,y2){
+		var c2 = Math.pow((y - y2),2) + Math.pow((x - x2),2);
+		return Math.sqrt(c2)
+	}
+	
+
+	// Check if objects overlap
+	function rectOverlap(A, B){
+		var xOverlap = valueInRange(A.x, B.x, B.x + B.width) ||
+		valueInRange(B.x, A.x, A.x + A.width);
+	
+		var yOverlap = valueInRange(A.y, B.y, B.y + B.height) ||
+		valueInRange(B.y, A.y, A.y + A.height);
+
+		return xOverlap && yOverlap;
+	}
+  
+  	// Check if in array
+ 	function oc(a){
+	  var o = {};
+	  for(var i=0;i<a.length;i++){
+    	o[a[i]]='';
+	  }
+	  return o;
+	} 
+  
+	</script>
+  <script src="js/zepto.min.js"></script>
+  <script src="js/ocanvas-1.0.js"></script>
+  <script>
+ 
+ 
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Settings
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */ 
+  var s = {
+		HEALTH : 20,
+	  	GUN    : 'rifle',
+		ENEMY  : 8,
+		SPEED  : {player:8},
+		HEIGHT : 600,
+		WIDTH  : 600
+	  
+  }
+
+  
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Core Function
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */   
+  
+  var canvas = oCanvas.create({     
+    	canvas: "#canvas" ,
+		fps : 26,
+		background: "#000"
+});  
+
+
+// Define the class
+	
+	
+
+
+
+var grid = 40
+for(var i = 0;  i < grid; i++){
+	var linex = canvas.display.line({
+		start: { x: (s.WIDTH/grid)*i, y: 600 },
+		end: { x: (s.WIDTH/grid)*i, y: 0 },
+		stroke: "1px rgba(37,197,249,.5)",
+		//shadowColor:'#fff',
+		//shadowBlur:'4px',
+		
+	});
+	
+	var liney =  canvas.display.line({
+		start: { x: 0, y: (s.HEIGHT/grid) * i },
+		end: { x: 600, y: (s.HEIGHT/grid) * i },
+		stroke: "1px rgba(37,197,249,.5)",
+		//shadowColor:'#fff',
+		//shadowBlur:'4px',
+	
+	});
+	
+	canvas.addChild(liney);
+	
+	canvas.addChild(linex);
+}
+
+function init(canvas){
+	
+	var player = canvas.display.arc({
+		// oCanvas Core
+		x: 400,
+		y: 400,
+		radius: 20,
+		start: 360,
+		end: 0,
+		fill: "#0aa",
+	
+		// Player Defaults
+		health: s.HEALTH,
+		damage:2,
+		gun: s.GUN,
+		speed:s.SPEED.player,
+		// Handles damage and health display
+		takeHit:function(dmg){
+			this.health --;
+			if(this.health == 0){
+				alert('Died');
+			}
+		},
+		// Handles player movements
+		moveIt: function(key){
+			if(key == 37){
+			//left
+				if(player.x!=4){
+					player.x -= this.speed;
+				}
+			
+			} else if(key == 39){
+				//right
+				if(player.x!= 598){
+					player.x += this.speed;
+				}
+			} else if(key == 38){	
+				// up
+				if(player.y!= 4){
+					player.y -= this.speed;
+				}
+			} else if(key == 40){	
+				//down
+				if(player.y!= 598){
+					player.y += this.speed;
+				}
+			}
+		}
+	});
+	
+	canvas.addChild(player);
+	
+	// Next version gun options with properties
+	// rifle, shotgun, raygun
+	var gun = canvas.display.rectangle({
+		// oCanvas Core
+		x: player.x,
+		y: player.y,
+		
+		// Gun defaults
+		damage : 4,
+		range  : 100,
+		rounds : 100,
+		// rounds it can unload ps
+		rate   : 30,
+		// Action attached to click
+		fire   : function(){
+			this.rounds --
+			if(this.rounds == 0){
+				alert('Out of Rounds');
+			}
+		}
+		
+	});
+	
+	// Add melee weapons to future
+	
+	// Initial generic bullet
+	// different types of bullets associated with guns
+	var bullet  = canvas.display.rectangle({
+	    width: 3,     
+	    height: 5,     
+	    fill: "#f5e9a3" 
+	}); 
+	
+
+	// Helper to view pointer 
+	var line = canvas.display.line({
+		// Attach to player starting point
+		start: { x: player.x, y: player.y },
+		end: { x: 398, y: 398 },
+		stroke: "5px #0cf",
+		cap: "round"
+	});
+
+	canvas.addChild(line);
+
+	//	canvas.bind("mousemove",function(e){
+	//		line.end = {x:canvas.mouse.x,y:canvas.mouse.y}
+	//	});
+
+  
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Handles Keyboard Controls
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */   
+canvas.bind("keypress", function (e) {
+	player.moveIt(e.keyCode);
+	// Update line helper origin
+	line.start =  { x: player.x, y: player.y }
+});
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Enemy Handling
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */  
+	
+	// Object to hold enemies and holds config for setup
+	var enemies = {
+		
+	  objs  : [],
+	  count : s.ENEMY,
+	  died 	: function(i){
+		  		
+		  		
+				this.objs.splice(i,1);
+				this.count--
+				
+				// Check if all enemies killed
+				if(this.count == 0){
+					alert('Threat Over');	
+					canvas.timeline.stop();
+				}	  
+			}
+	}
+	
+
+	
+	
+	// Generate enemies
+	for(var i = 0; i < enemies.count; i++ ){
+	
+		var xi = Math.floor(Math.random()*601), 
+			yi = Math.floor(Math.random()*601),
+			//Clone base zombie
+			enemy = canvas.display.enemy({ 
+				// oCanvas Core   
+		     	width: 30,     
+			    height: 30, 
+				stroke: "1px #333",
+				key:i,
+				x: xi,
+				player: player,
+				y: yi,
+				rotation:45
+		
+		    }); 
+	
+		enemy.fill = "hsl(" + Math.random() * 360 + ", 50%, 50%)";
+		canvas.addChild(enemy);
+		/*
+		enemy.chase = zombie.chase;
+		enemy.interval = setInterval(function() {
+			enemy.chase();
+		},300)
+
+	*/
+
+	
+	enemies.objs.push(enemy);
+
+	
+	
+
+}
+
+
+
+
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Canvas Loop
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */  
+
+canvas.setLoop(function () {
+	// Update line position
+	line.end = {x:canvas.mouse.x,y:canvas.mouse.y}
+	
+	for(var i = 0; i < enemies.count; i++ ){
+	
+	}
+	
+	
+
+}).start();
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Click Handling
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */  
+canvas.bind("click", function (e) {
+	// 
+	var bull = bullet.clone({x:player.x,y:player.y});
+	
+	bullet.slope = (line.start.y - canvas.mouse.y) / (line.start.x - canvas.mouse.x ) 
+	canvas.addChild(bull);
+	
+	var x = 0
+	
+	if(bull.x < canvas.mouse.x ){
+		x = 610
+	} else {
+		x = -10;	
+	}
+	
+	
+	var tx = player.x, ty = player.y 
+
+	var mult = -1;
+	
+	bull.animate({
+		x: x,
+		y: (mult*parseFloat(bullet.slope)*(tx - x)) + ty
+	}, "long", "linear", function () {
+		// Callback if need be
+		
+	});
+	
+	
+	bull.checkcollision = setInterval(function(){
+		
+		// Get X / Y coords
+		var x = parseInt(bull.x), y = parseInt(bull.y)
+		
+		// Check if goes out of bounds
+		if(x > s.WIDTH || x < 0 || y < 0 || y > s.HEIGHT){
+			clearInterval(bull.checkcollision);
+			canvas.removeChild(bull);
+			return false;
+		}
+		
+		
+		for(var i = 0; i < enemies.count; i++ ){
+			var sq = {x: enemies.objs[i].x,y:enemies.objs[i].y}
+		
+			if(valueInRange(x, sq.x, sq.x + enemies.objs[i].width)){
+				
+				if(valueInRange(y, sq.y, sq.y + enemies.objs[i].height)){
+					enemies.objs[i].takeHit(player.damage);
+					// Remove bullet
+					canvas.removeChild(bull);
+					// Clear interval
+					clearInterval(bull.checkcollision);
+					// exit loop
+					break;
+				}
+			}
+			
+			
+			
+		}
+		
+	
+		
+		
+	},1000/30)
+	
+	});
+}
+
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Start
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */ 
+
+init(canvas);
+
+
+
+
+	
+  </script>
+</body>
+</html>

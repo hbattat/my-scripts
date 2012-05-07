@@ -1,0 +1,642 @@
+<!doctype html>
+<!-- paulirish.com/2008/conditional-stylesheets-vs-css-hacks-answer-neither/ -->
+<!--[if lt IE 7]> <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="en"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js lt-ie9 lt-ie8" lang="en"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js lt-ie9" lang="en"> <![endif]-->
+<!-- Consider adding a manifest.appcache: h5bp.com/d/Offline -->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+  <title>Blockers</title>
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<link rel="stylesheet" href="css/style.css">
+
+  <script src="js/modernizr-2.0.6.min.js"></script>
+  
+</head>
+
+<body>
+  	<div id="health">0</div>
+	<canvas id="canvas" height="600" width="600"></canvas>
+   	<a id="fps">0</a>
+    <a id="obj">View game obj</a>
+    <script>
+	/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Core Function
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */   
+  
+  var PI = Math.PI;
+  
+  console.log(PI)
+  	//http://jasonrowe.com/2009/03/14/determine-if-two-rectangles-overlap-each-other-in-javascript/
+	// Check if position is in range
+	function valueInRange(value, min, max){
+		return (value <= max) && (value >= min);
+	}
+	
+	
+	// Calculate slope
+	function slope(x,x2,y,y2){
+		x = parseFloat(x);
+		x2 = parseFloat(x2);
+		
+		y = parseFloat(y);
+		y2 = parseFloat(y2);
+		
+		return (y - y2) / ( x - x2);
+		
+	}
+	
+	// Get hypotenuse
+	function get_hyp(x,x2,y,y2){
+		var c2 = Math.pow((y - y2),2) + Math.pow((x - x2),2);
+		return Math.sqrt(c2)
+	}
+	
+
+	// Check if objects overlap
+	function rectOverlap(A, B){
+		var xOverlap = valueInRange(A.x, B.x, B.x + B.width) ||
+		valueInRange(B.x, A.x, A.x + A.width);
+	
+		var yOverlap = valueInRange(A.y, B.y, B.y + B.height) ||
+		valueInRange(B.y, A.y, A.y + A.height);
+
+		return xOverlap && yOverlap;
+	}
+  
+  	// Check if in array
+ 	function oc(a){
+	  var o = {};
+	  for(var i=0;i<a.length;i++){
+    	o[a[i]]='';
+	  }
+	  return o;
+	} 
+  
+	</script>
+  <script src="js/zepto.min.js"></script>
+ 
+  <script>
+  
+  var $health = $('#health');
+ var fps = 0, now, lastUpdate = (new Date)*1 - 1;
+ fpsOut = document.getElementById('fps');
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Settings
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */ 
+  var s = {
+		HEALTH : 20,
+	  	GUN    : 'rifle',
+		ENEMY  : 8,
+		SPEED  : {Player:8},
+		HEIGHT : 600,
+		WIDTH  : 600
+	  
+  }
+
+
+
+function chase(obj){
+	        var x = this.x, 
+				y = this.y
+			
+			var hyp = get_hyp(x,obj.x,y, obj.y);
+		  	
+			// var deg  = Math.atan(slopes) * 100;
+			// var b = y-(slopes*x) ;
+			// var new_y = slopes*(x+1)+b;
+			
+			
+			if(x > obj.x){
+				this.x -=this.speed 
+				//this.x = parseInt(x - x/ hyp);
+			} else if(x == obj.x) {
+				//return false
+			
+			} else {
+				this.x+=this.speed 
+				//this.x = parseInt(x + x/ hyp);
+			}
+			
+			//console.log(y,Player.y,x,Player.x);
+			
+			if(y > obj.y){
+				//this.y = parseInt(y - y / hyp);
+				this.y-=this.speed 
+			} else if(y == obj.y) {
+				//return false
+				
+			} else {
+				this.y+=this.speed 
+			}
+}
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Core Function
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */   
+  
+var $canvas = $('#canvas')[0],
+	ctx = $canvas.getContext('2d');
+
+
+
+
+
+
+// Singleton since there is only one player
+	var Player = {
+		
+		//
+		x:20,
+		y:20,
+		width:21,
+		height:21,
+		
+		c_x: function (){ return this.x + (this.width - 1) / 2  },
+		c_y: function (){ return this.y + (this.height - 1) / 2 },
+		health: 100,
+		speed:20,
+		alivefor: 0,
+		gun : {},
+		
+		
+		takeHit: function(dmg){
+			this.health --
+			$health.html(this.health)
+			if(this.health <=0){
+				this.dies();
+			}
+		},
+		dies : function(){
+			alert('DIED');
+			clearInterval(gameinterval);
+		},
+		
+		draw: function(){
+			
+			//ctx.rect(this.x,this.y, this.height,this.width);
+			this.alivefor ++;
+			
+			ctx.fillStyle = "rgb(200,0,0)";  
+       		ctx.fillRect (this.x,this.y, this.height,this.width);
+			
+			ctx.fillStyle = "#fff" ; 
+			ctx.fillRect (this.c_x(),this.c_y(), 1,1); 
+			 
+			this.callback(); 
+			
+		},
+		// Callback, default in draw function
+		callback : function (){
+			
+		}
+		
+		
+		
+			
+	}
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Weapon Handling
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */  
+
+var Bullet = function (settings) {
+	
+	// Starting position, dependant on player position
+	this.y
+	this.x
+	
+	// For slope calcuation
+	this.end_x 
+	this.end_y
+	
+	this.height = 3
+	this.width = 3
+	this.fill = '#000'
+	
+	
+	
+	this.speed = 2
+	this.damage = 4;
+	this.health = 1
+	
+	// For passing in settings
+	for(var set in settings){
+		this[set] = settings[set]	
+	}
+	
+	// Specific instantiation settings, for bullet path
+	var hyp  = get_hyp(this.x,this.end_x,this.y,this.end_y);
+
+	var multi = 1 / (hyp / this.speed) 
+	
+	this.inc_x = (this.end_x -this.x) * multi
+	this.inc_y = (this.end_y - this.y) * multi
+	
+	this.end_y = (-1*this.slope*(this.x - this.end_x)) + settings.y
+	this.slope =  ((this.y - this.end_y) / (this.x - this.end_x ) );
+	
+	
+	
+	if(this.x < this.end_x ){
+		this.end_x = 610
+	} else {
+		this.end_x = -10;	
+	}
+
+	
+	
+	
+	
+	this.draw = function(){
+		    ctx.fillStyle = this.fill;  
+       		ctx.fillRect (this.x,this.y, this.height,this.width);  
+			this.callback();
+			return this;
+	}
+	
+	// Callback, default in draw function
+	this.callback =  function(){
+			this.checkCollision(this.chaseafter);
+	}
+		
+}
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Weapon Handling - Prototyping for performance
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */  
+Bullet.prototype.chase = function (){
+	  this.checkCollision();
+}
+
+
+
+Bullet.prototype.checkCollision = function (){
+		// Get X / Y coords
+		var x =this.x, y = this.y,obj = {x:this.end_x,y:this.end_y}, hit =false
+		
+		// Check if goes out of bounds
+		if(x > 600 || x < 0 || y < 0 || y > 600){
+			
+				hit = true
+				//game.BULLETS.count --;
+				game.BULLETS.remove(this.key);
+				
+			
+			return false;
+		} else {
+		
+		
+		for(var i = 0; i < game.ENEMIES.objs.length; i++ ){
+			if(game.ENEMIES.objs[i] != undefined){
+			var sq = {x: game.ENEMIES.objs[i].x, y:game.ENEMIES.objs[i].y}
+		
+			if(valueInRange(x, sq.x, sq.x + game.ENEMIES.objs[i].width)){
+				
+				if(valueInRange(y, sq.y, sq.y + game.ENEMIES.objs[i].height)){
+					game.ENEMIES.objs[i].takeHit(this);
+					// Remove bullet
+					hit = true
+					
+					
+					game.BULLETS.remove(this.key);
+				
+					
+					// exit loop
+					break;
+				}
+			}
+			}
+			
+		}
+		if(!hit){
+			this.x +=  this.inc_x 
+			this.y +=  this.inc_y
+		}
+	}
+}
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Enemy Handling
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */  
+var Enemy = function (settings) {
+		
+		// Default values at top
+		this.x  
+		this.y 
+		
+		this.fill  
+		this.height = 17
+		this.width = 17
+		
+		this.c_x =  function (){ 
+			return(this.x + (this.width - 1) / 2)  
+		},
+		this.c_y = function (){ return(this.y + (this.height - 1) / 2) },
+		
+		
+		this.damage = 4
+		this.health = 7
+		this.speed = 1
+		this.chaseafter = Player
+		this.alivefor = 0;
+		
+		// Instantiation Settings after default settings
+		for(var set in settings){
+			this[set] = settings[set]	
+		}
+		
+		// Object Function
+		this.callback =  function(){
+			this.checkCollision(this.chaseafter);
+		}
+		
+}
+	
+	
+	Enemy.prototype.draw = function(){
+		
+		//console.log(this)
+			this.alivefor ++;
+			  ctx.save();  
+			  
+			  		ctx.translate(this.c_x(),this.c_y());
+				  	ctx.rotate(PI / 4);
+			
+			
+			
+
+					
+			ctx.fillStyle = this.fill;  
+       		ctx.fillRect (this.x,this.y, this.height,this.width); 
+			
+		
+			
+			ctx.fillStyle = "#fff" ; 
+			ctx.fillRect (this.c_x(),this.c_y(), 1,1); 
+			ctx.translate(0,0); 
+			ctx.restore();
+			this.callback();
+			return this;
+	};
+	
+		Enemy.prototype.chase = function(obj){
+		
+		        var x = this.x, 
+					y = this.y,
+					s = this.speed 
+			
+			/*
+			if(Math.abs(obj.x - x) < 1){
+				s = obj.x
+			}
+			*/
+	
+		
+			
+			if(x > obj.x){
+				this.x -= s
+				
+			} else if(Math.abs(obj.x - x) < 1) {
+				//this.x = obj.x	
+				
+			
+			} else {
+				this.x += s
+				
+			}
+			
+			
+			if(y > obj.y){
+			
+				this.y -= s
+			} else if(Math.abs(obj.y - y) < 1) {
+				//this.y = obj.y	
+					
+			} else {
+				this.y += s
+						
+			}
+			
+		
+			
+	}
+	
+	Enemy.prototype.checkCollision = function(obj){
+		var x = this.x, 
+			y = this.y
+			
+			
+			// Collision Detection
+			if(valueInRange(x, obj.x, obj.x + obj.width)){
+				if(valueInRange(y, obj.y, obj.y + obj.height)){
+					obj.takeHit(this.damage);
+				 	return false;
+				}
+			} 
+			 this.chase(this.chaseafter);	
+			
+	}
+	
+	Enemy.prototype.takeHit = function(obj){
+		
+		this.health -= obj.damage;
+		delete game.BULLETS.objs[obj.key];
+		delete obj
+		if(this.health <= 0){
+				// alert('dd');
+				
+			
+			
+			
+			
+			
+			game.ENEMIES.remove(this.key);	
+		
+			
+		}
+	}
+	
+	
+
+
+	
+	
+	
+
+	var game = {
+		PLAYER : Player,
+		BULLETS  : {
+			fired :0,
+			objs:[],
+			count:0,
+			remove:function (i){
+			
+				game.BULLETS.objs.splice(i,1);
+				
+				for(var l = 0; l < game.BULLETS.objs.length  ; l++){
+					game.BULLETS.objs[l].key =l;
+				}
+				console.log('bull.remove');
+				
+			
+			}
+		},
+		ENEMIES  : {
+			objs:[],
+			count:5,
+			remove:function (i){
+				
+				
+				
+				game.ENEMIES.objs.splice(i,1);
+				
+				
+				for(var l = 0; l < game.ENEMIES.objs.length  ; l++){
+					game.ENEMIES.objs[l].key =l;
+				}
+				
+				console.log('enemy.remove');
+				
+				
+				
+			}
+			
+			}
+			
+			,
+		
+	}
+	
+	for(var i = 0; i < game.ENEMIES.count; i++){
+		var x = Math.floor(Math.random()*601), 
+			 y = Math.floor(Math.random()*601)
+			
+			game.ENEMIES.objs[i] = new Enemy({x:x,y:y,fill:"hsl(" + Math.random() * 360 + ", 50%, 50%)"})
+			game.ENEMIES.objs[i].key = i;
+		
+	}
+	
+	
+	var img = new Image();
+img.src = "bg.png"
+
+	
+	var gameinterval = setInterval(function(){
+	
+	
+		 var thisFrameFPS = 1000 / ((now=new Date) - lastUpdate);
+  fps += (thisFrameFPS - fps) / fpsFilter;
+  lastUpdate = now;
+  fpsOut.innerHTML = fps.toFixed(1) + "fps";
+  
+		ctx.clearRect(0,0, $canvas.width, $canvas.height);
+		// ctx.drawImage(img,0,0);
+		game.PLAYER.draw();
+		
+		
+		for(var i in game.ENEMIES.objs){
+			if(game.ENEMIES.objs[i] != null){
+				game.ENEMIES.objs[i].draw();
+			}
+		}
+		
+		for(var i in game.BULLETS.objs){
+			if(game.BULLETS.objs[i] != null){
+				game.BULLETS.objs[i].draw();
+			}
+		}
+		
+		if(game.ENEMIES.objs.length == 0){
+			clearInterval(gameinterval);
+		}
+		
+		
+	}, 1000/ 30);
+	
+	
+	
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+	Movement Handling
+ 
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */  	
+	$(document).bind('keydown', function(e){
+			var key  = e.keyCode
+			//console.log(e);
+			if(key == 37){
+			//left
+				if(Player.x > 10){
+					Player.x -= Player.speed;
+				}
+			
+			} else if(key == 39){
+				//right
+				if(Player.x < 570){
+					Player.x += Player.speed;
+				}
+			} else if(key == 38){	
+				// up
+				if(Player.y  > 10){
+					Player.y -= Player.speed;
+				}
+			} else if(key == 40){	
+				//down
+				if(Player.y < 560){
+					Player.y += Player.speed;
+				}
+			}
+ 
+});
+
+$($canvas).bind('click',function(e){
+	var x = e.clientX,
+		y = e.clientY, 
+		c = game.BULLETS.objs.length
+
+	game.BULLETS.objs[c] = new Bullet({x:Player.x, y:Player.y, end_x:x, end_y:y})	
+	game.BULLETS.objs[c].key = c;
+	game.BULLETS.fired ++ ;
+	
+		
+	
+});
+	
+	
+$('#obj').bind('click',function(e){
+	console.log(game)
+	
+
+		
+	
+});
+		
+
+
+// The higher this value, the less the FPS will be affected by quick changes
+// Setting this to 1 will show you the FPS of the last sampled frame only
+var fpsFilter = 30;
+
+
+ 
+
+
+	
+  </script>
+</body>
+</html>
